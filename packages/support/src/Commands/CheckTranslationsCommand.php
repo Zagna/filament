@@ -15,6 +15,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Finder\SplFileInfo;
 
 use function Laravel\Prompts\info;
+use function Laravel\Prompts\note;
 use function Laravel\Prompts\table;
 use function Laravel\Prompts\warning;
 
@@ -51,6 +52,12 @@ class CheckTranslationsCommand extends Command implements PromptsForMissingInput
                 mode: InputOption::VALUE_REQUIRED,
                 description: 'The directory containing the translations to check - either \'vendor\' or \'app\'',
                 default: 'vendor',
+            ),
+            new InputOption(
+                name: 'identical',
+                shortcut: null,
+                mode: InputOption::VALUE_NONE,
+                description: 'If the option is set, check for translations that have the same value as the english original',
             ),
         ];
     }
@@ -142,12 +149,17 @@ class CheckTranslationsCommand extends Command implements PromptsForMissingInput
                                     Arr::dot($actualKeys),
                                     Arr::dot($expectedKeys)
                                 )),
+                                'identical' => $this->option('identical') ? array_keys(array_intersect(
+                                    Arr::dot($actualKeys),
+                                    Arr::dot($expectedKeys)
+                                )) : [],
                             ],
                         ];
                     })
                     ->tap(function (Collection $files) use ($locale, $package): void {
                         $missingKeysCount = $files->sum(fn ($file): int => count($file['missing']));
                         $removedKeysCount = $files->sum(fn ($file): int => count($file['removed']));
+                        $identicalKeysCount = $files->sum(fn ($file): int => count($file['identical']));
 
                         $locale = locale_get_display_name($locale, 'en');
 
@@ -160,14 +172,18 @@ class CheckTranslationsCommand extends Command implements PromptsForMissingInput
                         } else {
                             warning("[!] Package filament/{$package} has {$removedKeysCount} removed translation " . Str::plural('key', $removedKeysCount) . " for {$locale}.\n");
                         }
+                        if ($this->option('identical') && $identicalKeysCount) {
+                            note("[=] Package filament/{$package} has identical translation " . Str::plural('string', $identicalKeysCount) . " for {$locale}.\n");
+                        }
                     })
-                    ->filter(static fn ($keys): bool => count($keys['missing']) || count($keys['removed']))
+                    ->filter(static fn ($keys): bool => count($keys['missing']) || count($keys['removed']) || count($keys['identical']))
                     ->each(function ($keys, string $file): void {
                         table(
                             [$file, ''],
                             [
                                 ...array_map(fn (string $key): array => [$key, 'Missing'], $keys['missing']),
                                 ...array_map(fn (string $key): array => [$key, 'Removed'], $keys['removed']),
+                                ...array_map(fn (string $key): array => [$key, 'Identical'], $this->option('identical') ? $keys['identical'] : []),
                             ],
                         );
                     });
