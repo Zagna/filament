@@ -172,7 +172,7 @@ class CheckTranslationsCommand extends Command implements PromptsForMissingInput
                         } else {
                             warning("[!] Package filament/{$package} has {$removedKeysCount} removed translation " . Str::plural('key', $removedKeysCount) . " for {$locale}.\n");
                         }
-                        if ($this->option('identical') && $identicalKeysCount) {
+                        if ($identicalKeysCount) {
                             note("[=] Package filament/{$package} has {$identicalKeysCount} identical translation " . Str::plural('string', $identicalKeysCount) . " for {$locale}.\n");
                         }
                     })
@@ -183,7 +183,7 @@ class CheckTranslationsCommand extends Command implements PromptsForMissingInput
                             [
                                 ...array_map(fn (string $key): array => [$key, 'Missing'], $keys['missing']),
                                 ...array_map(fn (string $key): array => [$key, 'Removed'], $keys['removed']),
-                                ...array_map(fn (string $key): array => [$key, 'Identical'], $this->option('identical') ? $keys['identical'] : []),
+                                ...array_map(fn (string $key): array => [$key, 'Identical'], $keys['identical']),
                             ],
                         );
                     });
